@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-
 class Payment:
     def __init__(self, number, installment, principal, interest, balance):
         self.number = number
@@ -9,7 +8,6 @@ class Payment:
         self.principal = principal
         self.interest = interest
         self.balance = balance
-
 
 class Loan:
     def __init__(self, amount, months, annual_interest_rate):
@@ -32,7 +30,6 @@ class Loan:
             installment = self.amount / self.months
 
         return round(installment, 2)
-
 
 class AmortizationSchedule:
     def __init__(self, loan):
@@ -69,7 +66,6 @@ class AmortizationSchedule:
             self.payments.append(payment)
 
         return self.payments
-
 
 def oblicz():
     try:
