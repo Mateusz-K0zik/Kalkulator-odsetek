@@ -1,48 +1,112 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+
+class Payment:
+    def __init__(self, number, installment, principal, interest, balance):
+        self.number = number
+        self.installment = installment
+        self.principal = principal
+        self.interest = interest
+        self.balance = balance
+
+
+class Loan:
+    def __init__(self, amount, months, annual_interest_rate):
+        self.amount = amount
+        self.months = months
+        self.annual_interest_rate = annual_interest_rate
+
+    @property
+    def monthly_interest_rate(self):
+        return self.annual_interest_rate / 100 / 12
+
+    def calculate_installment(self):
+        rate = self.monthly_interest_rate
+
+        if rate > 0:
+            installment = self.amount * (
+                rate * (1 + rate) ** self.months
+            ) / ((1 + rate) ** self.months - 1)
+        else:
+            installment = self.amount / self.months
+
+        return round(installment, 2)
+
+
+class AmortizationSchedule:
+    def __init__(self, loan):
+        self.loan = loan
+        self.payments = []
+
+    def generate(self):
+        self.payments.clear()
+
+        balance = self.loan.amount
+        installment = self.loan.calculate_installment()
+        rate = self.loan.monthly_interest_rate
+
+        for month in range(1, self.loan.months + 1):
+            interest = round(balance * rate, 2)
+            principal = round(installment - interest, 2)
+
+            if month == self.loan.months:
+                principal = round(balance, 2)
+                installment = round(principal + interest, 2)
+
+            balance = round(balance - principal, 2)
+
+            if balance < 0:
+                balance = 0
+
+            payment = Payment(
+                number=month,
+                installment=installment,
+                principal=principal,
+                interest=interest,
+                balance=balance
+            )
+            self.payments.append(payment)
+
+        return self.payments
+
+
 def oblicz():
     try:
         kwota = float(entry_kwota.get())
         miesiace = int(entry_miesiace.get())
         oprocentowanie = float(entry_oprocentowanie.get())
 
-        stopa = oprocentowanie / 100 / 12
+        if kwota <= 0:
+            raise ValueError("Kwota kredytu musi być większa od zera.")
+        if miesiace <= 0:
+            raise ValueError("Liczba miesięcy musi być większa od zera.")
+        if oprocentowanie < 0:
+            raise ValueError("Oprocentowanie nie może być ujemne.")
 
-        if stopa > 0:
-            rata = kwota * (stopa * (1 + stopa)**miesiace) / ((1 + stopa)**miesiace - 1)
-        else:
-            rata = kwota / miesiace
+        loan = Loan(kwota, miesiace, oprocentowanie)
+        schedule = AmortizationSchedule(loan)
+        payments = schedule.generate()
 
-        rata = round(rata, 2)
-
+        rata = loan.calculate_installment()
         wynik_var.set(f"Rata miesięczna: {rata:,.2f} zł")
 
         for row in tree.get_children():
             tree.delete(row)
 
-        saldo = kwota
-
-        for m in range(1, miesiace + 1):
-            odsetki = round(saldo * stopa, 2)
-            kapital = round(rata - odsetki, 2)
-            saldo = round(saldo - kapital, 2)
-
-            if saldo < 0:
-                saldo = 0
-
-            tag = 'even' if m % 2 == 0 else 'odd'
+        for payment in payments:
+            tag = "even" if payment.number % 2 == 0 else "odd"
 
             tree.insert("", "end", values=(
-                m,
-                f"{rata:,.2f}",
-                f"{kapital:,.2f}",
-                f"{odsetki:,.2f}",
-                f"{saldo:,.2f}"
+                payment.number,
+                f"{payment.installment:,.2f}",
+                f"{payment.principal:,.2f}",
+                f"{payment.interest:,.2f}",
+                f"{payment.balance:,.2f}"
             ), tags=(tag,))
 
-    except ValueError:
-        messagebox.showerror("Błąd", "Podaj poprawne dane!")
+    except ValueError as e:
+        messagebox.showerror("Błąd", str(e))
 
 root = tk.Tk()
 root.title("Kalkulator kredytowy")
@@ -71,7 +135,11 @@ tk.Label(root, textvariable=wynik_var, font=("Arial", 12, "bold")).pack()
 frame_table = tk.Frame(root)
 frame_table.pack(fill="both", expand=True, padx=10, pady=10)
 
-tree = ttk.Treeview(frame_table, columns=("nr", "rata", "kapital", "odsetki", "saldo"), show="headings")
+tree = ttk.Treeview(
+    frame_table,
+    columns=("nr", "rata", "kapital", "odsetki", "saldo"),
+    show="headings"
+)
 tree.pack(side="left", fill="both", expand=True)
 
 tree.heading("nr", text="Nr")
@@ -90,7 +158,7 @@ scrollbar = ttk.Scrollbar(frame_table, orient="vertical", command=tree.yview)
 tree.configure(yscroll=scrollbar.set)
 scrollbar.pack(side="right", fill="y")
 
-tree.tag_configure('odd', background='#f2f2f2')
-tree.tag_configure('even', background='white')
+tree.tag_configure("odd", background="#f2f2f2")
+tree.tag_configure("even", background="white")
 
 root.mainloop()
